@@ -331,7 +331,7 @@ import vibe.web.auth : AuthInfo, handleAuthentication, handleAuthorization, isAu
 import std.algorithm : count, startsWith, endsWith, sort, splitter;
 import std.array : appender, split;
 import std.meta : AliasSeq;
-import std.range : isOutputRange;
+import std.range : isOutputRange, InputRange, inputRangeObject, iota;
 import std.string : strip, indexOf, toLower;
 import std.typecons : No, Nullable, Yes;
 import std.typetuple : anySatisfy, Filter;
@@ -416,7 +416,7 @@ URLRouter registerRestInterface(TImpl)(URLRouter router, TImpl instance, RestInt
 {
 	import std.algorithm : filter, map, all;
 	import std.array : array;
-	import std.range : front;
+	import std.range : front, InputRange;
 	import vibe.web.internal.rest.common : ParameterKind;
 
 	auto intf = RestInterface!TImpl(settings, false);
@@ -425,7 +425,9 @@ URLRouter registerRestInterface(TImpl)(URLRouter router, TImpl instance, RestInt
 		enum fname = __traits(identifier, intf.SubInterfaceFunctions[i]);
 		alias R = ReturnType!ovrld;
 
-		static if (isInstanceOf!(Collection, R)) {
+		static if (is(R == InputRange!V, V))
+			pragma(msg, "Endpoint ", fname, " returns an InputRange of ", V);
+		else static if (isInstanceOf!(Collection, R)) {
 			auto ret = __traits(getMember, instance, fname)(R.ParentIDs.init);
 			router.registerRestInterface!(R.Interface)(ret.m_interface, intf.subInterfaces[i].settings);
 		} else {
@@ -437,6 +439,7 @@ URLRouter registerRestInterface(TImpl)(URLRouter router, TImpl instance, RestInt
 
 	foreach (i, func; intf.RouteFunctions) {
 		auto route = intf.routes[i];
+        pragma(msg, "registerRestInterface: i = ", i, " route = ",  RestInterface!TImpl(RestInterfaceSettings.init, false).routes[i]);
 
 		// normal handler
 		auto handler = jsonMethodHandler!(func, i)(instance, intf);
@@ -508,6 +511,9 @@ URLRouter registerRestInterface(TImpl)(URLRouter router, TImpl instance, string 
 
 		// GET /some_custom_json
 		Json getSomeCustomJson();
+
+        // GET /int_range
+        InputRange!int getIntRange();
 	}
 
 	// vibe.d takes care of all JSON encoding/decoding
@@ -536,6 +542,11 @@ URLRouter registerRestInterface(TImpl)(URLRouter router, TImpl instance, string 
 			ret["somefield"] = "Hello, World!";
 			return ret;
 		}
+
+        InputRange!int getIntRange()
+        {
+            return inputRangeObject(iota(5));
+        }
 	}
 
 	// actual usage, this is usually done in app.d module
@@ -687,6 +698,7 @@ class RestInterfaceClient(I) : I
 	import std.typetuple : staticMap;
 
 	private alias Info = RestInterface!I;
+	pragma(msg, "RestInterfaceClient: Info =  ", Info);
 
 	//pragma(msg, "imports for "~I.stringof~":");
 	//pragma(msg, generateModuleImports!(I)());
@@ -2367,6 +2379,7 @@ do {
 			alias PN = TypeTuple!("-DummyInvalid-");
 		} else
 			alias PN = ParameterIdentifierTuple!Func;
+        pragma(msg, "getInterfaceValidationError I = ", I, " PN = ", PN);
 		alias WPAT = UDATuple!(WebParamAttribute, Func);
 
 		// Check if there is no orphan UDATuple (e.g. typo while writing the name of the parameter).

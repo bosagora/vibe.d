@@ -13,7 +13,9 @@ import vibe.http.router;
 import vibe.http.server;
 import vibe.web.rest;
 
+import std.algorithm;
 import std.typecons : Nullable, nullable;
+import std.range;
 import core.time;
 
 /* --------- EXAMPLE 1 ---------- */
@@ -53,6 +55,8 @@ interface Example1API
 	@property string getter();
 
 	InputStreamProxy getStream();
+
+	InputRange!int range();
 }
 
 class Example1 : Example1API
@@ -79,6 +83,11 @@ class Example1 : Example1API
 			import vibe.stream.memory : createMemoryStream;
 			return InputStreamProxy(createMemoryStream(cast(ubyte[])"foobar".dup));
 		}
+
+		InputRange!int range()
+		{
+			return inputRangeObject(iota(5));
+		}
 }
 
 unittest
@@ -90,6 +99,8 @@ unittest
 	assert (routes[0].method == HTTPMethod.GET && routes[0].pattern == "/example1_api/some_info");
 	assert (routes[1].method == HTTPMethod.POST && routes[1].pattern == "/example1_api/sum");
 	assert (routes[2].method == HTTPMethod.GET && routes[2].pattern == "/example1_api/getter");
+	assert (routes[3].method == HTTPMethod.GET && routes[3].pattern == "/example1_api/stream");
+	assert (routes[4].method == HTTPMethod.GET && routes[4].pattern == "/example1_api/range");
 }
 
 /* --------- EXAMPLE 2 ---------- */
@@ -565,6 +576,7 @@ void runTests(string url)
 		assert(api.getter == "Getter");
 		assert(api.postSum(2, 3) == 5);
 		assert(api.getStream().readAllUTF8() == "foobar");
+		assert(api.range!int().take(3).array == [0, 1, 2]);
 	}
 	// Example 2
 	{

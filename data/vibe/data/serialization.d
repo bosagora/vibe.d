@@ -938,6 +938,10 @@ private template deserializeValueImpl(Serializer, alias Policy) {
 			return ret;
 		} else static if (is(T == bool) || is(T : real) || is(T : long)) {
 			return to!T(ser.deserializeValue!string());
+		} else static if (is(T == InputRange!V, V))
+		{
+			pragma(msg, "deserializeValueDeduced ", T.stringof, " desrializes an InputRange of ", V);
+			return to!T(ser.deserializeValue!V());
 		} else static assert(false, "Unsupported serialization type: " ~ T.stringof);
 	}
 }
