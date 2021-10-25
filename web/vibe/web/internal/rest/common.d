@@ -12,6 +12,7 @@ import vibe.web.rest;
 
 import std.algorithm : endsWith, startsWith;
 import std.meta : anySatisfy, Filter;
+import std.range: InputRange;
 import std.traits : hasUDA;
 
 
@@ -52,10 +53,12 @@ import std.traits : hasUDA;
 		pragma(msg, "Type '" ~ TImpl.stringof ~ "' implements more than one interface: make sure the one describing the REST server is the first one");
 
 
+	pragma(msg, "RestInterface: TImpl=" , TImpl);
 	static if (is(TImpl == interface))
 		alias I = TImpl;
 	else
 		alias I = BaseInterfaces[0];
+	pragma(msg, "RestInterface: I=" , I);
 	static assert(getInterfaceValidationError!I is null, getInterfaceValidationError!(I));
 
 	/// The name of each interface member
@@ -393,7 +396,7 @@ import std.traits : hasUDA;
 		template Impl(size_t idx) {
 			static if (idx < AllMethods.length) {
 				alias SI = SubInterfaceType!(AllMethods[idx]);
-				static if (!is(SI == void)) {
+				static if (!is(SI == void) && (!is(SI == InputRange!V, V))) {
 					alias Impl = TypeTuple!(SI, Impl!(idx+1));
 				} else {
 					alias Impl = Impl!(idx+1);
